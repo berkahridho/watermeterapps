@@ -13,6 +13,8 @@ import MeterReadingForm from '@/components/MeterReadingForm';
 export default function MeterReadingPage() {
   const [user, setUser] = useState<any>(null);
   const [customers, setCustomers] = useState<Customer[]>([]);
+  const [availableCustomers, setAvailableCustomers] = useState<Customer[]>([]);
+  const [submittedCustomerIds, setSubmittedCustomerIds] = useState<Set<string>>(new Set());
   const [message, setMessage] = useState<{type: string, text: string} | null>(null);
   const [isOnline, setIsOnline] = useState(false);
   const [mounted, setMounted] = useState(false);
@@ -109,6 +111,9 @@ export default function MeterReadingPage() {
           }));
           
           setCustomers(customers);
+          
+          // Load submitted readings for this month and filter available customers
+          await loadSubmittedReadings(customers);
         }
       } catch (error) {
         console.error('Error fetching customers from server:', error);
@@ -131,6 +136,9 @@ export default function MeterReadingPage() {
             phone: c.phone || ''
           }));
           setCustomers(customers);
+          
+          // Load submitted readings for this month and filter available customers
+          await loadSubmittedReadings(customers);
         }
       }
 
@@ -138,6 +146,66 @@ export default function MeterReadingPage() {
     } catch (error) {
       console.error('Error loading data:', error);
       showMessage('error', 'Gagal memuat data pelanggan');
+    }
+  };
+
+  const loadSubmittedReadings = async (customersList: Customer[]) => {
+    try {
+      // Get current month
+      const now = new Date();
+      
+      // Get customer IDs for this RT
+      const customerIds = customersList.map(c => c.id);
+      
+      if (customerIds.length === 0) {
+        setSubmittedCustomerIds(new Set());
+        setAvailableCustomers(customersList);
+        return;
+      }
+      
+      // Get ALL meter readings for these customers and filter in JavaScript
+      // This avoids any date format issues with the database query
+      const { data: readings, error } = await supabase
+        .from('meter_readings')
+        .select('customer_id, date')
+        .in('customer_id', customerIds);
+      
+      if (!error && readings) {
+        // Filter readings to current month in JavaScript
+        const currentMonthReadings = readings.filter(reading => {
+          try {
+            // Handle different date formats
+            const readingDate = new Date(reading.date);
+            const readingYear = readingDate.getFullYear();
+            const readingMonth = readingDate.getMonth() + 1; // getMonth() returns 0-11
+            const currentYear = now.getFullYear();
+            const currentMonthNum = now.getMonth() + 1;
+            
+            return readingYear === currentYear && readingMonth === currentMonthNum;
+          } catch (e) {
+            console.error('Error parsing date:', reading.date, e);
+            return false;
+          }
+        });
+        
+        // Get unique customer IDs who have submitted readings
+        const submittedIds = new Set(currentMonthReadings.map(r => r.customer_id.toString()));
+        setSubmittedCustomerIds(submittedIds);
+        
+        // Filter out customers who have already submitted readings
+        const availableCustomers = customersList.filter(c => !submittedIds.has(c.id));
+        setAvailableCustomers(availableCustomers);
+      } else {
+        console.error('Error loading readings:', error);
+        // If error, show all customers
+        setSubmittedCustomerIds(new Set());
+        setAvailableCustomers(customersList);
+      }
+    } catch (error) {
+      console.error('Error loading submitted readings:', error);
+      // If error, show all customers
+      setSubmittedCustomerIds(new Set());
+      setAvailableCustomers(customersList);
     }
   };
 
@@ -187,7 +255,10 @@ export default function MeterReadingPage() {
   const handleReadingSubmitted = () => {
     showMessage('success', 'Pembacaan meter berhasil disimpan!');
     
-    // Don't auto-sync to prevent UI shaking - user can manually sync if needed
+    // Reload submitted readings to update the available customers list
+    if (user?.role === 'rt_pic') {
+      loadSubmittedReadings(customers);
+    }
   };
 
   const handleError = (error: string) => {
@@ -240,12 +311,23 @@ export default function MeterReadingPage() {
                   <p className="text-sm text-blue-700 dark:text-blue-300 mt-1">
                     Total pelanggan: <span className="font-bold">{customers.length}</span>
                   </p>
+                  <p className="text-sm text-blue-700 dark:text-blue-300 mt-1">
+                    Pembacaan selesai bulan ini: <span className="font-bold text-green-600 dark:text-green-400">{submittedCustomerIds.size} / {customers.length}</span>
+                  </p>
+                  <p className="text-sm text-blue-700 dark:text-blue-300 mt-1">
+                    Sisa yang belum: <span className="font-bold text-orange-600 dark:text-orange-400">{availableCustomers.length}</span>
+                  </p>
                 </div>
                 <div className="text-right">
                   <div className="text-3xl font-bold text-blue-600 dark:text-blue-400">
-                    {customers.length}
+                    {submittedCustomerIds.size}/{customers.length}
                   </div>
-                  <p className="text-xs text-blue-600 dark:text-blue-400 font-medium">Pelanggan</p>
+                  <p className="text-xs text-blue-600 dark:text-blue-400 font-medium">Selesai</p>
+                  {availableCustomers.length === 0 && customers.length > 0 && (
+                    <div className="mt-2 px-2 py-1 bg-green-100 dark:bg-green-900/20 rounded-full">
+                      <p className="text-xs text-green-600 dark:text-green-400 font-bold">✅ Semua Selesai!</p>
+                    </div>
+                  )}
                 </div>
               </div>
             </div>
@@ -335,7 +417,7 @@ export default function MeterReadingPage() {
           {/* Main Form */}
           <div className="mb-8">
             <MeterReadingForm
-              customers={customers}
+              customers={availableCustomers}
               onReadingSubmitted={handleReadingSubmitted}
               onError={handleError}
               isOnline={isOnline}
