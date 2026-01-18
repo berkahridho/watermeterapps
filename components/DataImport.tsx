@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import { FiUpload, FiDownload, FiCheckCircle, FiAlertTriangle, FiFileText, FiDatabase, FiDollarSign, FiActivity } from 'react-icons/fi';
+import { FiUpload, FiDownload, FiCheckCircle, FiAlertTriangle, FiFileText, FiDollarSign, FiActivity } from 'react-icons/fi';
 import { supabase } from '@/lib/supabase';
 
 interface ImportResult {
@@ -19,9 +19,10 @@ export default function DataImport() {
   const [result, setResult] = useState<ImportResult | null>(null);
   const [activeTab, setActiveTab] = useState<'transactions' | 'readings'>('transactions');
 
-  const downloadTemplate = (type: 'transactions' | 'readings') => {
-    const templates = {
-      transactions: {
+  const downloadTemplate = async (type: 'transactions' | 'readings') => {
+    if (type === 'transactions') {
+      // Keep existing transaction template with dummy data
+      const template = {
         filename: 'transactions_template.csv',
         headers: ['type', 'amount', 'date', 'category_name', 'description', 'created_by'],
         sample: [
@@ -32,34 +33,90 @@ export default function DataImport() {
           ['income', '500000', '2024-12-11', 'Saldo Awal', 'Initial balance from previous year', 'admin'],
           ['income', '75000', '2025-01-10', 'Lainnya', 'Late payment RT 03 - December 2024', 'admin']
         ]
-      },
-      readings: {
-        filename: 'meter_readings_template.csv',
-        headers: ['customer_name', 'rt', 'reading', 'date'],
-        sample: [
-          ['Budi Santoso', 'RT 01', '1250', '2024-12-15'],
-          ['Siti Aminah', 'RT 01', '980', '2024-12-15'],
-          ['Ahmad Rahman', 'RT 02', '1150', '2024-12-15'],
-          ['Dewi Sartika', 'RT 02', '875', '2024-12-15']
-        ]
+      };
+
+      const csvContent = [
+        template.headers.join(','),
+        ...template.sample.map(row => row.join(','))
+      ].join('\n');
+
+      const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+      const link = document.createElement('a');
+      const url = URL.createObjectURL(blob);
+      link.setAttribute('href', url);
+      link.setAttribute('download', template.filename);
+      link.style.visibility = 'hidden';
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+    } else if (type === 'readings') {
+      // Generate meter readings template with actual customer data
+      try {
+        const { data: customers, error } = await supabase
+          .from('customers')
+          .select('name, rt, phone')
+          .order('rt, name');
+
+        if (error) throw error;
+
+        const headers = ['customer_name', 'rt', 'reading', 'date'];
+        const today = new Date();
+        const dateStr = today.toISOString().split('T')[0]; // YYYY-MM-DD format
+
+        let csvRows = [];
+        
+        if (customers && customers.length > 0) {
+          // Use actual customer data
+          csvRows = customers.map(customer => [
+            customer.name,
+            customer.rt || '',
+            '', // Empty reading for user to fill
+            dateStr // Today's date as default
+          ]);
+        } else {
+          // Fallback to dummy data if no customers found
+          csvRows = [
+            ['Budi Santoso', 'RT 01', '', dateStr],
+            ['Siti Aminah', 'RT 01', '', dateStr],
+            ['Ahmad Rahman', 'RT 02', '', dateStr],
+            ['Dewi Sartika', 'RT 02', '', dateStr]
+          ];
+        }
+
+        const csvContent = [
+          headers.join(','),
+          ...csvRows.map(row => row.map(cell => 
+            // Escape cells that contain commas or quotes
+            typeof cell === 'string' && (cell.includes(',') || cell.includes('"')) 
+              ? `"${cell.replace(/"/g, '""')}"` 
+              : cell
+          ).join(','))
+        ].join('\n');
+
+        const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+        const link = document.createElement('a');
+        const url = URL.createObjectURL(blob);
+        link.setAttribute('href', url);
+        link.setAttribute('download', `meter_readings_template_${dateStr}.csv`);
+        link.style.visibility = 'hidden';
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+
+        // Show success message
+        setResult({
+          success: true,
+          message: `Template berhasil diunduh dengan ${customers?.length || 0} customer. Isi kolom 'reading' dan sesuaikan tanggal jika diperlukan.`
+        });
+
+      } catch (error: any) {
+        console.error('Error generating meter readings template:', error);
+        setResult({
+          success: false,
+          message: `Error generating template: ${error.message}`
+        });
       }
-    };
-
-    const template = templates[type];
-    const csvContent = [
-      template.headers.join(','),
-      ...template.sample.map(row => row.join(','))
-    ].join('\n');
-
-    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
-    const link = document.createElement('a');
-    const url = URL.createObjectURL(blob);
-    link.setAttribute('href', url);
-    link.setAttribute('download', template.filename);
-    link.style.visibility = 'hidden';
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
+    }
   };
 
   const handleFileImport = async (event: React.ChangeEvent<HTMLInputElement>, type: 'transactions' | 'readings') => {
@@ -273,32 +330,91 @@ export default function DataImport() {
 
     if (customerError) throw customerError;
 
-    // Create customer mapping for precise matching
+    // Helper function to normalize RT format
+    const normalizeRT = (rt: string): string => {
+      if (!rt) return '';
+      
+      // Remove extra spaces and convert to uppercase
+      const cleaned = rt.trim().toUpperCase();
+      
+      // Handle various RT formats
+      const rtMatch = cleaned.match(/RT\s*(\d+)/);
+      if (rtMatch) {
+        const number = rtMatch[1];
+        // Standardize to "RT 01", "RT 02" format (2 digits with leading zero)
+        return `RT ${number.padStart(2, '0')}`;
+      }
+      
+      // If no RT prefix, assume it's just a number
+      const numberMatch = cleaned.match(/^(\d+)$/);
+      if (numberMatch) {
+        return `RT ${numberMatch[1].padStart(2, '0')}`;
+      }
+      
+      return cleaned; // Return as-is if no pattern matches
+    };
+
+    // Helper function for fuzzy name matching
+    const calculateSimilarity = (str1: string, str2: string): number => {
+      const s1 = str1.toLowerCase().trim();
+      const s2 = str2.toLowerCase().trim();
+      
+      // Exact match
+      if (s1 === s2) return 1.0;
+      
+      // Check if one contains the other
+      if (s1.includes(s2) || s2.includes(s1)) return 0.8;
+      
+      // Simple word-based similarity
+      const words1 = s1.split(/\s+/);
+      const words2 = s2.split(/\s+/);
+      
+      let matchingWords = 0;
+      for (const word1 of words1) {
+        for (const word2 of words2) {
+          if (word1 === word2 || word1.includes(word2) || word2.includes(word1)) {
+            matchingWords++;
+            break;
+          }
+        }
+      }
+      
+      return matchingWords / Math.max(words1.length, words2.length);
+    };
+
+    // Create customer mapping with improved matching
     const customerMap = new Map();
     const customerList: string[] = [];
     
     customers?.forEach(customer => {
-      customerList.push(`${customer.name} (${customer.rt}) - ${customer.phone || 'No phone'}`);
+      const normalizedRT = normalizeRT(customer.rt || '');
+      customerList.push(`${customer.name} (${normalizedRT}) - ${customer.phone || 'No phone'}`);
+      
+      const normalizedName = customer.name.toUpperCase().trim();
+      const normalizedPhone = customer.phone ? customer.phone.replace(/\D/g, '') : '';
       
       // Create multiple matching keys for flexibility
-      const normalizedName = customer.name.toUpperCase().trim();
-      const normalizedRT = customer.rt.toUpperCase().trim();
-      const normalizedPhone = customer.phone ? customer.phone.replace(/\D/g, '') : ''; // Handle null phone
+      const keys = [
+        `${normalizedName}|${normalizedRT}|${normalizedPhone}`, // Primary: name + RT + phone
+        `${normalizedName}|${normalizedRT}`, // Secondary: name + RT
+        `${normalizedRT}|${normalizedPhone}`, // Tertiary: RT + phone (for similar names)
+      ];
       
-      // Primary key: name + RT + phone
-      const primaryKey = `${normalizedName}|${normalizedRT}|${normalizedPhone}`;
-      customerMap.set(primaryKey, customer);
-      
-      // Secondary key: name + RT (in case phone doesn't match exactly)
-      const secondaryKey = `${normalizedName}|${normalizedRT}`;
-      if (!customerMap.has(secondaryKey)) {
-        customerMap.set(secondaryKey, customer);
-      }
+      keys.forEach(key => {
+        if (key && !customerMap.has(key)) {
+          customerMap.set(key, {
+            ...customer,
+            normalizedRT,
+            matchType: key === keys[0] ? 'exact' : key === keys[1] ? 'name_rt' : 'rt_phone'
+          });
+        }
+      });
     });
 
     const readings = [];
     const errors: string[] = [];
     const matchLog: string[] = [];
+    const warnings: string[] = [];
 
     for (let i = 0; i < rows.length; i++) {
       const row = rows[i];
@@ -307,7 +423,7 @@ export default function DataImport() {
       try {
         const csvName = row[customerNameIndex]?.trim() || '';
         const csvRT = row[rtIndex]?.trim() || '';
-        const csvPhone = phoneIndex !== -1 ? row[phoneIndex]?.trim() || '' : ''; // Optional phone
+        const csvPhone = phoneIndex !== -1 ? row[phoneIndex]?.trim() || '' : '';
         const csvReading = row[readingIndex]?.trim() || '';
         const csvDate = row[dateIndex]?.trim() || '';
         
@@ -317,26 +433,78 @@ export default function DataImport() {
         }
         
         const normalizedName = csvName.toUpperCase().trim();
-        const normalizedRT = csvRT.toUpperCase().trim();
-        const normalizedPhone = csvPhone ? csvPhone.replace(/\D/g, '') : ''; // Handle null/undefined phone
+        const normalizedRT = normalizeRT(csvRT);
+        const normalizedPhone = csvPhone ? csvPhone.replace(/\D/g, '') : '';
         
-        // Try to match customer
+        // Try to match customer with multiple strategies
         let matchedCustomer = null;
-        const primaryKey = `${normalizedName}|${normalizedRT}|${normalizedPhone}`;
-        const secondaryKey = `${normalizedName}|${normalizedRT}`;
+        let matchType = '';
         
-        if (normalizedPhone && customerMap.has(primaryKey)) {
-          // Try exact match with phone if phone is provided
-          matchedCustomer = customerMap.get(primaryKey);
-          matchLog.push(`Row ${rowNumber}: "${csvName}" (${csvRT}) → "${matchedCustomer.name}" (${matchedCustomer.rt}) [exact match with phone]`);
-        } else if (customerMap.has(secondaryKey)) {
-          // Match by name + RT only
-          matchedCustomer = customerMap.get(secondaryKey);
-          matchLog.push(`Row ${rowNumber}: "${csvName}" (${csvRT}) → "${matchedCustomer.name}" (${matchedCustomer.rt}) [name+RT match]`);
-        } else {
-          errors.push(`Row ${rowNumber}: Customer not found - "${csvName}" (${csvRT}). Available customers: ${customerList.slice(0, 3).join(', ')}...`);
+        // Strategy 1: Exact match (name + RT + phone)
+        if (normalizedPhone) {
+          const exactKey = `${normalizedName}|${normalizedRT}|${normalizedPhone}`;
+          if (customerMap.has(exactKey)) {
+            matchedCustomer = customerMap.get(exactKey);
+            matchType = 'exact match with phone';
+          }
+        }
+        
+        // Strategy 2: Name + RT match
+        if (!matchedCustomer) {
+          const nameRTKey = `${normalizedName}|${normalizedRT}`;
+          if (customerMap.has(nameRTKey)) {
+            matchedCustomer = customerMap.get(nameRTKey);
+            matchType = 'name + RT match';
+          }
+        }
+        
+        // Strategy 3: RT + phone match (for cases where name might be slightly different)
+        if (!matchedCustomer && normalizedPhone) {
+          const rtPhoneKey = `${normalizedRT}|${normalizedPhone}`;
+          if (customerMap.has(rtPhoneKey)) {
+            matchedCustomer = customerMap.get(rtPhoneKey);
+            matchType = 'RT + phone match';
+            warnings.push(`Row ${rowNumber}: Name mismatch - CSV: "${csvName}", DB: "${matchedCustomer.name}" (matched by RT + phone)`);
+          }
+        }
+        
+        // Strategy 4: Fuzzy name matching within same RT
+        if (!matchedCustomer) {
+          let bestMatch = null;
+          let bestSimilarity = 0;
+          
+          for (const customer of customers || []) {
+            const customerNormalizedRT = normalizeRT(customer.rt || '');
+            if (customerNormalizedRT === normalizedRT) {
+              const similarity = calculateSimilarity(csvName, customer.name);
+              if (similarity > bestSimilarity && similarity >= 0.7) { // 70% similarity threshold
+                bestSimilarity = similarity;
+                bestMatch = {
+                  ...customer,
+                  normalizedRT: customerNormalizedRT,
+                  similarity
+                };
+              }
+            }
+          }
+          
+          if (bestMatch) {
+            matchedCustomer = bestMatch;
+            matchType = `fuzzy match (${Math.round(bestMatch.similarity * 100)}% similar)`;
+            warnings.push(`Row ${rowNumber}: Fuzzy name match - CSV: "${csvName}", DB: "${bestMatch.name}" (${Math.round(bestMatch.similarity * 100)}% similar)`);
+          }
+        }
+        
+        if (!matchedCustomer) {
+          // Show available customers in the same RT for better error messages
+          const sameRTCustomers = customers?.filter(c => normalizeRT(c.rt || '') === normalizedRT) || [];
+          const sameRTList = sameRTCustomers.map(c => `"${c.name}"`).join(', ');
+          
+          errors.push(`Row ${rowNumber}: Customer not found - "${csvName}" in ${normalizedRT}. Available customers in ${normalizedRT}: ${sameRTList || 'None'}`);
           continue;
         }
+        
+        matchLog.push(`Row ${rowNumber}: "${csvName}" (${csvRT}) → "${matchedCustomer.name}" (${matchedCustomer.normalizedRT}) [${matchType}]`);
         
         // Parse reading
         const reading = parseInt(csvReading);
@@ -386,17 +554,20 @@ export default function DataImport() {
           csvName: csvName,
           csvRT: csvRT,
           matchedName: matchedCustomer.name,
-          matchedRT: matchedCustomer.rt
+          matchedRT: matchedCustomer.normalizedRT,
+          matchType: matchType
         });
       } catch (error: any) {
         errors.push(`Row ${rowNumber}: Error processing - ${error.message}`);
       }
     }
 
-    // Show matching preview before importing
+    // Show matching preview with warnings
     if (readings.length > 0 && matchLog.length > 0) {
       const preview = matchLog.slice(0, 5).join('\n');
-      const confirmMessage = `Found ${readings.length} meter readings to import. First 5 matches:\n\n${preview}\n\n${matchLog.length > 5 ? `...and ${matchLog.length - 5} more matches.\n\n` : ''}Do you want to proceed with the import?`;
+      const warningText = warnings.length > 0 ? `\n\nWARNINGS:\n${warnings.slice(0, 3).join('\n')}${warnings.length > 3 ? `\n...and ${warnings.length - 3} more warnings` : ''}` : '';
+      
+      const confirmMessage = `Found ${readings.length} meter readings to import. First 5 matches:\n\n${preview}\n\n${matchLog.length > 5 ? `...and ${matchLog.length - 5} more matches.\n\n` : ''}${warningText}\n\nDo you want to proceed with the import?`;
       
       if (!window.confirm(confirmMessage)) {
         setResult({
@@ -432,13 +603,14 @@ export default function DataImport() {
     }
 
     const allErrors = [...errors, ...importErrors];
+    const allWarnings = warnings;
     
     setResult({
       success: imported > 0,
-      message: `Import completed: ${imported} meter readings imported${allErrors.length > 0 ? `, ${allErrors.length} errors` : ''}`,
+      message: `Import completed: ${imported} meter readings imported${allErrors.length > 0 ? `, ${allErrors.length} errors` : ''}${allWarnings.length > 0 ? `, ${allWarnings.length} warnings` : ''}`,
       details: {
         readingsImported: imported,
-        errors: allErrors.slice(0, 15)
+        errors: [...allErrors.slice(0, 10), ...allWarnings.slice(0, 5)]
       }
     });
   };
@@ -613,7 +785,7 @@ export default function DataImport() {
                 <div className="text-center">
                   <FiDownload className="mx-auto h-8 w-8 text-gray-400 dark:text-gray-500 mb-2" />
                   <p className="text-sm font-medium text-gray-900 dark:text-white">Template Pembacaan Meter</p>
-                  <p className="text-xs text-gray-500 dark:text-gray-400">meter_readings_template.csv</p>
+                  <p className="text-xs text-gray-500 dark:text-gray-400">Dengan data customer aktual - siap diisi</p>
                 </div>
               </button>
             </div>
@@ -682,18 +854,18 @@ export default function DataImport() {
             <div className="flex items-start">
               <FiFileText className="h-5 w-5 text-blue-500 dark:text-blue-400 mr-3 mt-0.5" />
               <div>
-                <h4 className="font-medium text-blue-800 dark:text-blue-200 mb-2">Petunjuk Import Pembacaan Meter:</h4>
+                <h4 className="font-medium text-blue-800 dark:text-blue-200 mb-2">Petunjuk Import Pembacaan Meter (Smart Template):</h4>
                 <ul className="text-sm text-blue-700 dark:text-blue-300 space-y-1">
-                  <li>1. Download template CSV terlebih dahulu</li>
-                  <li>2. Isi data sesuai format template</li>
-                  <li>3. Simpan sebagai CSV (UTF-8 encoding)</li>
-                  <li>4. Pastikan customer sudah terdaftar di sistem</li>
-                  <li>5. Format tanggal: YYYY-MM-DD atau DD/MM/YYYY</li>
-                  <li>6. Customer_name: harus persis sama dengan nama di database</li>
-                  <li>7. RT: harus persis sama dengan RT di database</li>
-                  <li>8. Reading: angka pembacaan meter (bilangan bulat positif)</li>
-                  <li>9. Sistem akan mencegah duplikasi pembacaan dalam bulan yang sama</li>
-                  <li>10. Gunakan tombol "Show Available Customers" untuk melihat customer yang tersedia</li>
+                  <li>1. <strong>Download Template Cerdas:</strong> Template berisi semua customer aktual dari database</li>
+                  <li>2. <strong>Isi Reading:</strong> Tinggal isi kolom 'reading' dengan angka pembacaan meter</li>
+                  <li>3. <strong>Sesuaikan Tanggal:</strong> Ubah tanggal jika diperlukan (default: hari ini)</li>
+                  <li>4. Simpan sebagai CSV (UTF-8 encoding)</li>
+                  <li>5. <strong>RT Format Fleksibel:</strong> "RT 01", "RT01", "1" semua diterima</li>
+                  <li>6. <strong>Nama Fleksibel:</strong> Sistem dapat mencocokkan nama yang mirip (70%+ similarity)</li>
+                  <li>7. <strong>Multiple Matching:</strong> Sistem mencoba nama+RT, RT+phone, dan fuzzy matching</li>
+                  <li>8. <strong>Preview & Warnings:</strong> Lihat hasil matching sebelum import final</li>
+                  <li>9. Sistem mencegah duplikasi pembacaan dalam bulan yang sama</li>
+                  <li>10. Gunakan "Show Available Customers" untuk referensi jika diperlukan</li>
                 </ul>
               </div>
             </div>
