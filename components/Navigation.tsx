@@ -255,18 +255,18 @@ export default function Navigation({ user, currentPage }: NavigationProps) {
           
           {/* Right Side Controls */}
           <div className="flex items-center space-x-3">
-            {/* Theme Toggle */}
+            {/* Theme Toggle - Desktop Only */}
             <div className="hidden sm:block">
               <ThemeToggle />
             </div>
             
-            {/* Offline Indicator */}
+            {/* Offline Indicator - Desktop Only */}
             <div className="hidden sm:block">
               <OptimizedOfflineIndicator />
             </div>
             
-            {/* User Menu */}
-            <div className="relative">
+            {/* User Menu - Desktop Only */}
+            <div className="relative hidden lg:block">
               <button
                 onClick={() => setUserMenuOpen(!userMenuOpen)}
                 className="flex items-center text-sm font-medium text-gray-700 dark:text-gray-300 rounded-xl focus:outline-none bg-gray-100 dark:bg-gray-800 hover:bg-gray-200 dark:hover:bg-gray-700 px-3 py-2 transition-all duration-200 touch-target"
@@ -276,9 +276,9 @@ export default function Navigation({ user, currentPage }: NavigationProps) {
                     {user?.email?.charAt(0).toUpperCase() || 'U'}
                   </span>
                 </div>
-                <div className="hidden sm:block text-left">
+                <div className="text-left">
                   <div className="text-xs text-gray-500 dark:text-gray-400">
-                    {isRTPIC ? `RT PIC - ${user?.assigned_rt}` : isAdmin ? 'Admin' : 'User'}
+                    {isRTPIC ? `RT PIC - ${user?.assigned_rt}` : isAdmin ? 'Admin' : user?.role === 'viewer' ? 'Viewer' : 'User'}
                   </div>
                   <div className="text-sm font-medium truncate max-w-[100px]">
                     {user?.email?.split('@')[0]}
@@ -299,7 +299,7 @@ export default function Navigation({ user, currentPage }: NavigationProps) {
                         {user?.email}
                       </div>
                       <div className="text-xs text-gray-500 dark:text-gray-400 mt-1">
-                        {isRTPIC ? `RT PIC - ${user?.assigned_rt}` : isAdmin ? 'Administrator' : 'User'}
+                        {isRTPIC ? `RT PIC - ${user?.assigned_rt}` : isAdmin ? 'Administrator' : user?.role === 'viewer' ? 'Viewer' : 'User'}
                       </div>
                     </div>
                     <button
@@ -331,6 +331,25 @@ export default function Navigation({ user, currentPage }: NavigationProps) {
         {mobileMenuOpen && (
           <div className="lg:hidden pb-4 animate-slide-up">
             <div className="space-y-1 pt-2 pb-3">
+              {/* User Info Section - Mobile Only */}
+              <div className="px-4 py-3 border-b border-gray-200 dark:border-gray-700 mb-3">
+                <div className="flex items-center">
+                  <div className="w-10 h-10 bg-gradient-to-br from-blue-500 to-purple-500 rounded-lg flex items-center justify-center mr-3">
+                    <span className="text-white text-sm font-bold">
+                      {user?.email?.charAt(0).toUpperCase() || 'U'}
+                    </span>
+                  </div>
+                  <div className="flex-1">
+                    <div className="text-sm font-medium text-gray-900 dark:text-gray-100">
+                      {user?.email?.split('@')[0]}
+                    </div>
+                    <div className="text-xs text-gray-500 dark:text-gray-400">
+                      {isRTPIC ? `RT PIC - ${user?.assigned_rt}` : isAdmin ? 'Administrator' : user?.role === 'viewer' ? 'Viewer' : 'User'}
+                    </div>
+                  </div>
+                </div>
+              </div>
+
               {/* Core Navigation Items */}
               {navigationItems.map((item) => {
                 const Icon = item.icon;
@@ -389,6 +408,7 @@ export default function Navigation({ user, currentPage }: NavigationProps) {
                 <OptimizedOfflineIndicator />
               </div>
               
+              {/* Logout Button */}
               <button 
                 onClick={handleLogout}
                 className="w-full text-left text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800 px-4 py-3 rounded-xl text-base font-medium flex items-center transition-all duration-200 touch-target border-t border-gray-200 dark:border-gray-700 mt-3 pt-3"
