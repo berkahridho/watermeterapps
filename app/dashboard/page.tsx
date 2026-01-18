@@ -89,7 +89,7 @@ export default function Dashboard() {
           <DashboardMetrics className="mb-8" />
 
           {/* Quick Actions */}
-          <div className="mb-6">
+          {/* <div className="mb-6">
             <h2 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">Quick Actions</h2>
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
               <Link href="/customers" className="bg-white dark:bg-gray-800 p-5 text-center flex flex-col items-center justify-center rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 hover:shadow-md dark:hover:bg-gray-700 transition-all duration-300 ease-out">
@@ -124,7 +124,7 @@ export default function Dashboard() {
                 <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">Track RT payments & income</p>
               </Link>
             </div>
-          </div>
+          </div> */}
         </main>
       </div>
     </ProtectedRoute>

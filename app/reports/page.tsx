@@ -947,13 +947,16 @@ export default function BillingReports() {
                 <h1 className="text-2xl font-bold text-gray-900 dark:text-white">Laporan Tagihan Air</h1>
                 <p className="text-gray-600 dark:text-gray-400">Generate dan cetak kwitansi pembayaran air</p>
               </div>
-              <button
-                onClick={() => setShowDiscountManager(true)}
-                className="flex items-center space-x-2 px-4 py-2 bg-gradient-to-r from-purple-500 to-pink-500 text-white rounded-xl font-medium hover:from-purple-600 hover:to-pink-600 transition-all duration-300"
-              >
-                <FiPercent className="h-4 w-4" />
-                <span>Kelola Diskon</span>
-              </button>
+              {/* Only show discount management for admin and RT PIC */}
+              {(user?.role === 'admin' || user?.role === 'rt_pic' || user?.email === 'admin@example.com' || user?.isDemo === true) && (
+                <button
+                  onClick={() => setShowDiscountManager(true)}
+                  className="flex items-center space-x-2 px-4 py-2 bg-gradient-to-r from-purple-500 to-pink-500 text-white rounded-xl font-medium hover:from-purple-600 hover:to-pink-600 transition-all duration-300"
+                >
+                  <FiPercent className="h-4 w-4" />
+                  <span>Kelola Diskon</span>
+                </button>
+              )}
             </div>
           </div>
 
@@ -1178,16 +1181,19 @@ export default function BillingReports() {
                           ) : (
                             <div className="flex items-center space-x-2">
                               <span className="text-gray-400 dark:text-gray-500 text-sm">Tidak ada</span>
-                              <button
-                                onClick={() => {
-                                  setSelectedCustomerForDiscount(bill.customer.id);
-                                  setShowDiscountManager(true);
-                                }}
-                                className="text-blue-600 hover:text-blue-800 dark:text-blue-400 dark:hover:text-blue-300 transition-colors"
-                                title="Tambah diskon"
-                              >
-                                <FiSettings className="h-4 w-4" />
-                              </button>
+                              {/* Only show discount settings for admin and RT PIC */}
+                              {(user?.role === 'admin' || user?.role === 'rt_pic' || user?.email === 'admin@example.com' || user?.isDemo === true) && (
+                                <button
+                                  onClick={() => {
+                                    setSelectedCustomerForDiscount(bill.customer.id);
+                                    setShowDiscountManager(true);
+                                  }}
+                                  className="text-blue-600 hover:text-blue-800 dark:text-blue-400 dark:hover:text-blue-300 transition-colors"
+                                  title="Tambah diskon"
+                                >
+                                  <FiSettings className="h-4 w-4" />
+                                </button>
+                              )}
                             </div>
                           )}
                         </td>

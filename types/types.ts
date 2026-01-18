@@ -85,7 +85,7 @@ export * from './financial';
 export interface User {
   id: string;
   email: string;
-  role: 'admin' | 'rt_pic' | 'collector';
+  role: 'admin' | 'rt_pic' | 'viewer';
   full_name?: string;
   assigned_rt?: string;
   phone?: string;

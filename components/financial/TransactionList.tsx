@@ -7,8 +7,8 @@ import ExportButtons from './ExportButtons';
 
 interface TransactionListProps {
   transactions: Transaction[];
-  onEdit: (transaction: Transaction) => void;
-  onDelete: (id: string) => Promise<void>;
+  onEdit?: (transaction: Transaction) => void;
+  onDelete?: (id: string) => Promise<void>;
   loading?: boolean;
   showExport?: boolean;
   title?: string;
@@ -35,6 +35,7 @@ export default function TransactionList({
   const currentTransactions = transactions.slice(startIndex, endIndex);
 
   const handleDelete = async (id: string) => {
+    if (!onDelete) return;
     setDeletingId(id);
     try {
       await onDelete(id);
@@ -149,25 +150,29 @@ export default function TransactionList({
                   </p>
                 </div>
                 <div className="flex items-center space-x-2 ml-4">
-                  <Button
-                    variant="secondary"
-                    size="sm"
-                    icon={<FiEdit />}
-                    onClick={() => onEdit(transaction)}
-                    className="!p-2"
-                  >
-                    <span className="sr-only">Edit</span>
-                  </Button>
-                  <Button
-                    variant="danger"
-                    size="sm"
-                    icon={<FiTrash2 />}
-                    onClick={() => handleDelete(transaction.id)}
-                    loading={deletingId === transaction.id}
-                    className="!p-2"
-                  >
-                    <span className="sr-only">Delete</span>
-                  </Button>
+                  {onEdit && (
+                    <Button
+                      variant="secondary"
+                      size="sm"
+                      icon={<FiEdit />}
+                      onClick={() => onEdit(transaction)}
+                      className="!p-2"
+                    >
+                      <span className="sr-only">Edit</span>
+                    </Button>
+                  )}
+                  {onDelete && (
+                    <Button
+                      variant="danger"
+                      size="sm"
+                      icon={<FiTrash2 />}
+                      onClick={() => handleDelete(transaction.id)}
+                      loading={deletingId === transaction.id}
+                      className="!p-2"
+                    >
+                      <span className="sr-only">Delete</span>
+                    </Button>
+                  )}
                 </div>
               </div>
             </div>
@@ -195,9 +200,11 @@ export default function TransactionList({
               <th className="px-6 py-3 text-left text-xs font-semibold text-gray-600 dark:text-gray-300 uppercase tracking-wider">
                 Date
               </th>
-              <th className="px-6 py-3 text-right text-xs font-semibold text-gray-600 dark:text-gray-300 uppercase tracking-wider">
-                Actions
-              </th>
+              {(onEdit || onDelete) && (
+                <th className="px-6 py-3 text-right text-xs font-semibold text-gray-600 dark:text-gray-300 uppercase tracking-wider">
+                  Actions
+                </th>
+              )}
             </tr>
           </thead>
           <tbody className="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">
@@ -232,27 +239,33 @@ export default function TransactionList({
                 <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400">
                   {formatDateIDWithMonth(transaction.date)}
                 </td>
-                <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
-                  <div className="flex items-center justify-end space-x-2">
-                    <Button
-                      variant="secondary"
-                      size="sm"
-                      icon={<FiEdit />}
-                      onClick={() => onEdit(transaction)}
-                    >
-                      Edit
-                    </Button>
-                    <Button
-                      variant="danger"
-                      size="sm"
-                      icon={<FiTrash2 />}
-                      onClick={() => handleDelete(transaction.id)}
-                      loading={deletingId === transaction.id}
-                    >
-                      Delete
-                    </Button>
-                  </div>
-                </td>
+                {(onEdit || onDelete) && (
+                  <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
+                    <div className="flex items-center justify-end space-x-2">
+                      {onEdit && (
+                        <Button
+                          variant="secondary"
+                          size="sm"
+                          icon={<FiEdit />}
+                          onClick={() => onEdit(transaction)}
+                        >
+                          Edit
+                        </Button>
+                      )}
+                      {onDelete && (
+                        <Button
+                          variant="danger"
+                          size="sm"
+                          icon={<FiTrash2 />}
+                          onClick={() => handleDelete(transaction.id)}
+                          loading={deletingId === transaction.id}
+                        >
+                          Delete
+                        </Button>
+                      )}
+                    </div>
+                  </td>
+                )}
               </tr>
             ))}
           </tbody>

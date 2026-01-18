@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react';
 import { FiWifi, FiWifiOff, FiRefreshCw, FiCheck } from 'react-icons/fi';
 import { optimizedSyncManager } from '@/lib/optimizedSyncManager';
+import { SyncCleanup } from '@/lib/syncCleanup';
 
 export default function OptimizedOfflineIndicator() {
   const [syncStatus, setSyncStatus] = useState({
@@ -14,11 +15,14 @@ export default function OptimizedOfflineIndicator() {
   const [showSyncSuccess, setShowSyncSuccess] = useState(false);
 
   useEffect(() => {
-    // Update status every second
+    // Clean up stale sync items on component mount
+    SyncCleanup.cleanupStaleItems();
+
+    // Update status every 2 seconds (less frequent to reduce overhead)
     const interval = setInterval(() => {
       const status = optimizedSyncManager.getSyncStatus();
       setSyncStatus(status);
-    }, 1000);
+    }, 2000);
 
     // Start auto-sync
     optimizedSyncManager.startAutoSync();
@@ -35,8 +39,22 @@ export default function OptimizedOfflineIndicator() {
     }
   }, [syncStatus.isOnline, syncStatus.syncInProgress, syncStatus.pendingReadings]);
 
-  // Only show indicator when offline or syncing
-  if (syncStatus.isOnline && !syncStatus.syncInProgress && syncStatus.pendingReadings === 0) {
+  // Only show indicator when there's actually something to show
+  const shouldShowIndicator = () => {
+    // Always show if offline
+    if (!syncStatus.isOnline) return true;
+    
+    // Show if actively syncing
+    if (syncStatus.syncInProgress) return true;
+    
+    // Show if there are pending readings
+    if (syncStatus.pendingReadings > 0) return true;
+    
+    // Otherwise, don't show
+    return false;
+  };
+
+  if (!shouldShowIndicator()) {
     return null;
   }
 
