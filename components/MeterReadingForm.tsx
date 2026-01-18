@@ -9,7 +9,7 @@ import { useState, useEffect } from 'react';
 import { FiDroplet, FiSave, FiAlertCircle, FiCheckCircle, FiInfo, FiUser, FiCalendar, FiTrendingUp, FiDollarSign } from 'react-icons/fi';
 import { Customer } from '@/types/types';
 import { supabase } from '@/lib/supabase';
-import MeterDataService, { ValidationResult } from '@/lib/meterDataService';
+import MeterDataService from '@/lib/meterDataService';
 import ValidationService from '@/lib/validationService';
 import { offlineStorage } from '@/lib/offlineStorage';
 import { formatDateID } from '@/utils/dateFormat';
@@ -59,8 +59,6 @@ export default function MeterReadingForm({
   const [predictedUsage, setPredictedUsage] = useState<number | null>(null);
   const [estimatedBill, setEstimatedBill] = useState<number | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [syncAttempts, setSyncAttempts] = useState(0);
-  const MAX_SYNC_ATTEMPTS = 3;
 
   // Get selected customer data
   const selectedCustomer = customers.find(c => c.id === formData.customerId);
@@ -81,72 +79,6 @@ export default function MeterReadingForm({
       setEstimatedBill(null);
     }
   }, [formData]);
-
-  const syncReadingWithServer = async (readingId: string, attempt: number = 1): Promise<boolean> => {
-    if (!isOnline || attempt > MAX_SYNC_ATTEMPTS) {
-      return false;
-    }
-
-    try {
-      
-      // Get the reading from offline storage
-      const readings = offlineStorage.getReadings();
-      const reading = readings.find(r => r.id === readingId);
-      
-      if (!reading) {
-        console.error('Reading not found in offline storage');
-        return false;
-      }
-
-      // Check if already synced - prevent duplicate inserts
-      if (reading.synced) {
-        return true;
-      }
-
-      // Import supabase here to avoid circular dependencies
-      const { supabase } = await import('@/lib/supabase');
-
-      // Try to sync to server
-      const { data, error } = await supabase
-        .from('meter_readings')
-        .insert([{
-          customer_id: reading.customer_id,
-          reading: reading.reading,
-          date: reading.date
-        }]);
-
-      if (error) {
-        console.error(`Sync attempt ${attempt} failed:`, error);
-        
-        // Retry after a delay if we haven't exceeded max attempts
-        if (attempt < MAX_SYNC_ATTEMPTS) {
-          const delayMs = Math.min(1000 * Math.pow(2, attempt - 1), 5000); // Exponential backoff: 1s, 2s, 4s
-          
-          await new Promise(resolve => setTimeout(resolve, delayMs));
-          return syncReadingWithServer(readingId, attempt + 1);
-        }
-        
-        return false;
-      }
-
-      // Mark as synced in offline storage IMMEDIATELY after successful insert
-      offlineStorage.updateReading(readingId, { synced: true });
-      
-      return true;
-    } catch (error) {
-      console.error(`Sync error on attempt ${attempt}:`, error);
-      
-      // Retry if we haven't exceeded max attempts
-      if (attempt < MAX_SYNC_ATTEMPTS) {
-        const delayMs = Math.min(1000 * Math.pow(2, attempt - 1), 5000);
-        
-        await new Promise(resolve => setTimeout(resolve, delayMs));
-        return syncReadingWithServer(readingId, attempt + 1);
-      }
-      
-      return false;
-    }
-  };
 
   const validateForm = async () => {
     setValidation(prev => ({ ...prev, isValidating: true }));
@@ -264,17 +196,33 @@ export default function MeterReadingForm({
           warnings: result.validation.warnings,
           isValidating: false
         });
+        setIsSubmitting(false);
         return;
       }
 
-      // Save the reading
-      const customerData = customers.find(c => c.id === formData.customerId);
-      const readingId = offlineStorage.addReading({
-        customer_id: formData.customerId,
-        reading: readingValue,
-        date: formData.date
-      }, customerData?.name, customerData?.rt);
+      if (isOnline) {
+        // Online mode: Insert directly to server
+        const { error } = await supabase
+          .from('meter_readings')
+          .insert([{
+            customer_id: formData.customerId,
+            reading: readingValue,
+            date: formData.date
+          }]);
 
+        if (error) {
+          throw new Error(`Failed to save reading: ${error.message}`);
+        }
+      } else {
+        // Offline mode: Save to offline storage for later sync
+        const customerData = customers.find(c => c.id === formData.customerId);
+        offlineStorage.addReading({
+          customer_id: formData.customerId,
+          reading: readingValue,
+          date: formData.date
+        }, customerData?.name, customerData?.rt);
+      }
+      
       // Reset form but keep the selected date
       const selectedDate = formData.date;
       setFormData({
@@ -282,12 +230,6 @@ export default function MeterReadingForm({
         reading: '',
         date: selectedDate
       });
-      
-      // Attempt to sync if online
-      if (isOnline) {
-        syncReadingWithServer(readingId);
-      } else {
-      }
       
       // Notify parent component
       if (onReadingSubmitted) {
@@ -297,7 +239,6 @@ export default function MeterReadingForm({
     } catch (error) {
       console.error('Error submitting reading:', error);
       const errorMessage = error instanceof Error ? error.message : 'Terjadi kesalahan saat menyimpan pembacaan';
-      
       if (onError) {
         onError(errorMessage);
       }

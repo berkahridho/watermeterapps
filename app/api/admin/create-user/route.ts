@@ -37,17 +37,36 @@ export async function POST(request: NextRequest) {
     const body = await request.json();
     console.log('📝 API: Request body received:', { 
       email: body.email, 
+      username: body.username,
       role: body.role, 
       assigned_rt: body.assigned_rt 
     });
     
-    const { email, password, full_name, role, assigned_rt, phone } = body;
+    const { email, username, password, full_name, role, assigned_rt, phone } = body;
 
     // Validate required fields
-    if (!email || !password || !full_name || !role) {
+    if (!email || !username || !password || !full_name || !role) {
       console.log('❌ API: Missing required fields');
       return NextResponse.json(
-        { error: 'Missing required fields: email, password, full_name, role' },
+        { error: 'Missing required fields: email, username, password, full_name, role' },
+        { status: 400 }
+      );
+    }
+
+    // Validate username format
+    if (username.length < 3 || username.length > 50) {
+      console.log('❌ API: Username length invalid');
+      return NextResponse.json(
+        { error: 'Username must be between 3 and 50 characters' },
+        { status: 400 }
+      );
+    }
+
+    // Validate username contains only alphanumeric and underscore
+    if (!/^[a-zA-Z0-9_]+$/.test(username)) {
+      console.log('❌ API: Username contains invalid characters');
+      return NextResponse.json(
+        { error: 'Username can only contain letters, numbers, and underscores' },
         { status: 400 }
       );
     }
@@ -105,6 +124,7 @@ export async function POST(request: NextRequest) {
       .upsert({
         id: authData.user.id,
         email,
+        username,
         full_name,
         phone: phone || null,
         role,

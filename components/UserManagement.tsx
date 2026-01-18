@@ -1,15 +1,16 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { FiUser, FiPlus, FiEdit2, FiTrash2, FiPhone, FiMail, FiMapPin, FiCheck, FiX } from 'react-icons/fi';
+import { FiUser, FiPlus, FiEdit2, FiPhone, FiMail, FiMapPin, FiCheck, FiX } from 'react-icons/fi';
 import { supabase } from '@/lib/supabase';
 
 interface UserProfile {
   id: string;
   email: string;
+  username?: string;
   full_name: string;
   phone?: string;
-  role: 'admin' | 'rt_pic' | 'collector';
+  role: 'admin' | 'rt_pic';
   assigned_rt?: string;
   is_active: boolean;
   created_at: string;
@@ -20,7 +21,7 @@ interface RTAssignment {
   id: string;
   user_id: string;
   rt: string;
-  role: 'pic' | 'collector' | 'backup';
+  role: 'pic' ;
   assigned_date: string;
   is_active: boolean;
 }
@@ -33,9 +34,10 @@ export default function UserManagement() {
   const [editingUser, setEditingUser] = useState<UserProfile | null>(null);
   const [formData, setFormData] = useState({
     email: '',
+    username: '',
     full_name: '',
     phone: '',
-    role: 'rt_pic' as 'admin' | 'rt_pic' | 'collector',
+    role: 'rt_pic' as 'admin' | 'rt_pic' ,
     assigned_rt: '',
     password: ''
   });
@@ -94,6 +96,7 @@ export default function UserManagement() {
         const { error } = await supabase
           .from('user_profiles')
           .update({
+            username: formData.username,
             full_name: formData.full_name,
             phone: formData.phone,
             role: formData.role,
@@ -120,6 +123,7 @@ export default function UserManagement() {
           },
           body: JSON.stringify({
             email: formData.email,
+            username: formData.username,
             password: formData.password,
             full_name: formData.full_name,
             phone: formData.phone,
@@ -144,6 +148,7 @@ export default function UserManagement() {
       // Reset form and reload users
       setFormData({
         email: '',
+        username: '',
         full_name: '',
         phone: '',
         role: 'rt_pic',
@@ -163,6 +168,7 @@ export default function UserManagement() {
     setEditingUser(user);
     setFormData({
       email: user.email,
+      username: user.username || '',
       full_name: user.full_name,
       phone: user.phone || '',
       role: user.role,
@@ -196,8 +202,6 @@ export default function UserManagement() {
         return 'bg-purple-100 text-purple-800 dark:bg-purple-900 dark:text-purple-200';
       case 'rt_pic':
         return 'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200';
-      case 'collector':
-        return 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200';
       default:
         return 'bg-gray-100 text-gray-800 dark:bg-gray-900 dark:text-gray-200';
     }
@@ -209,8 +213,6 @@ export default function UserManagement() {
         return 'Administrator';
       case 'rt_pic':
         return 'RT PIC';
-      case 'collector':
-        return 'Collector';
       default:
         return role;
     }
@@ -230,7 +232,7 @@ export default function UserManagement() {
       <div className="flex justify-between items-center">
         <div>
           <h2 className="text-2xl font-bold text-gray-900 dark:text-white">User Management</h2>
-          <p className="text-gray-600 dark:text-gray-400">Manage RT PICs and collectors</p>
+          <p className="text-gray-600 dark:text-gray-400">Manage RT PICs</p>
         </div>
         <button
           onClick={() => {
@@ -238,6 +240,7 @@ export default function UserManagement() {
             setEditingUser(null);
             setFormData({
               email: '',
+              username: '',
               full_name: '',
               phone: '',
               role: 'rt_pic',
@@ -276,6 +279,21 @@ export default function UserManagement() {
 
             <div>
               <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                Username
+              </label>
+              <input
+                type="text"
+                value={formData.username}
+                onChange={(e) => setFormData({ ...formData, username: e.target.value })}
+                disabled={!!editingUser}
+                className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent dark:bg-gray-700 dark:text-white disabled:bg-gray-100 dark:disabled:bg-gray-600"
+                placeholder="cth. petugasRTxx"
+                required
+              />
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                 Full Name
               </label>
               <input
@@ -296,6 +314,7 @@ export default function UserManagement() {
                 value={formData.phone}
                 onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
                 className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent dark:bg-gray-700 dark:text-white"
+                placeholder="e.g., +62812345678"
               />
             </div>
 
@@ -309,7 +328,6 @@ export default function UserManagement() {
                 className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent dark:bg-gray-700 dark:text-white"
               >
                 <option value="rt_pic">RT PIC</option>
-                <option value="collector">Collector</option>
                 <option value="admin">Administrator</option>
               </select>
             </div>
@@ -412,6 +430,9 @@ export default function UserManagement() {
                           <div className="text-sm text-gray-500 dark:text-gray-400 flex items-center">
                             <FiMail className="h-3 w-3 mr-1" />
                             {user.email}
+                          </div>
+                          <div className="text-sm text-gray-500 dark:text-gray-400">
+                            @{user.username}
                           </div>
                           {user.phone && (
                             <div className="text-sm text-gray-500 dark:text-gray-400 flex items-center">
