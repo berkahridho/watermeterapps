@@ -198,7 +198,6 @@ export class ValidationService {
 
       return results;
     } catch (error) {
-      console.error('Error validating meter reading:', error);
       return [{
         isValid: false,
         message: 'Terjadi kesalahan saat validasi pembacaan meter',
