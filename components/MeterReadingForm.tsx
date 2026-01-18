@@ -8,6 +8,7 @@
 import { useState, useEffect } from 'react';
 import { FiDroplet, FiSave, FiAlertCircle, FiCheckCircle, FiInfo, FiUser, FiCalendar, FiTrendingUp, FiDollarSign } from 'react-icons/fi';
 import { Customer } from '@/types/types';
+import { supabase } from '@/lib/supabase';
 import MeterDataService, { ValidationResult } from '@/lib/meterDataService';
 import ValidationService from '@/lib/validationService';
 import { offlineStorage } from '@/lib/offlineStorage';
@@ -83,12 +84,10 @@ export default function MeterReadingForm({
 
   const syncReadingWithServer = async (readingId: string, attempt: number = 1): Promise<boolean> => {
     if (!isOnline || attempt > MAX_SYNC_ATTEMPTS) {
-      console.log(`Sync skipped: online=${isOnline}, attempt=${attempt}/${MAX_SYNC_ATTEMPTS}`);
       return false;
     }
 
     try {
-      console.log(`Attempting to sync reading ${readingId} (attempt ${attempt}/${MAX_SYNC_ATTEMPTS})`);
       
       // Get the reading from offline storage
       const readings = offlineStorage.getReadings();
@@ -122,7 +121,6 @@ export default function MeterReadingForm({
         // Retry after a delay if we haven't exceeded max attempts
         if (attempt < MAX_SYNC_ATTEMPTS) {
           const delayMs = Math.min(1000 * Math.pow(2, attempt - 1), 5000); // Exponential backoff: 1s, 2s, 4s
-          console.log(`Retrying in ${delayMs}ms...`);
           
           await new Promise(resolve => setTimeout(resolve, delayMs));
           return syncReadingWithServer(readingId, attempt + 1);
@@ -141,7 +139,6 @@ export default function MeterReadingForm({
       // Retry if we haven't exceeded max attempts
       if (attempt < MAX_SYNC_ATTEMPTS) {
         const delayMs = Math.min(1000 * Math.pow(2, attempt - 1), 5000);
-        console.log(`Retrying in ${delayMs}ms...`);
         
         await new Promise(resolve => setTimeout(resolve, delayMs));
         return syncReadingWithServer(readingId, attempt + 1);
@@ -168,20 +165,47 @@ export default function MeterReadingForm({
         return;
       }
 
-      // Get previous reading for context
-      const prevReading = offlineStorage.getPreviousReading(formData.customerId, formData.date);
+      // Get previous reading - try server first, then offline storage
+      let prevReading = null;
+      
+      try {
+        // Try to fetch from server first
+        const { data, error } = await supabase
+          .from('meter_readings')
+          .select('*')
+          .eq('customer_id', formData.customerId)
+          .lt('date', formData.date)
+          .order('date', { ascending: false })
+          .limit(1);
+
+        if (!error && data && data.length > 0) {
+          prevReading = {
+            id: data[0].id,
+            customer_id: data[0].customer_id,
+            reading: data[0].reading,
+            date: data[0].date
+          };
+        }
+      } catch (serverError) {
+        // If server fails, try offline storage
+        const offlineReading = offlineStorage.getPreviousReading(formData.customerId, formData.date);
+        if (offlineReading) {
+          prevReading = {
+            id: offlineReading.id,
+            customer_id: offlineReading.customer_id,
+            reading: offlineReading.reading,
+            date: offlineReading.date
+          };
+        }
+      }
+
       setPreviousReading(prevReading);
 
       // Validate using the centralized service
       const validationResults = await ValidationService.validateMeterReading(readingValue, {
         customerId: formData.customerId,
         readingDate: formData.date,
-        previousReading: prevReading ? {
-          id: prevReading.id,
-          customer_id: prevReading.customer_id,
-          reading: prevReading.reading,
-          date: prevReading.date
-        } : undefined
+        previousReading: prevReading || undefined
       });
 
       const summary = ValidationService.getValidationSummary(validationResults);
@@ -261,10 +285,8 @@ export default function MeterReadingForm({
       
       // Attempt to sync if online
       if (isOnline) {
-        console.log('Network is online, attempting to sync reading...');
         syncReadingWithServer(readingId);
       } else {
-        console.log('Network is offline, reading saved locally for later sync');
       }
       
       // Notify parent component

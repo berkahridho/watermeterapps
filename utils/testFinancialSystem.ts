@@ -58,7 +58,7 @@ export async function testFinancialSystem() {
       description: 'Test transaction'
     };
     
-    const validationResult = validationService.validateTransaction(validTransaction);
+    const validationResult = ValidationService.validateTransaction(validTransaction);
     if (validationResult.isValid) {
       console.log('✅ Valid transaction validation passed');
     } else {
@@ -74,7 +74,7 @@ export async function testFinancialSystem() {
       description: 'Invalid test transaction'
     };
     
-    const invalidValidationResult = validationService.validateTransaction(invalidTransaction);
+    const invalidValidationResult = ValidationService.validateTransaction(invalidTransaction);
     if (!invalidValidationResult.isValid) {
       console.log('✅ Invalid transaction validation correctly failed');
     } else {
@@ -158,7 +158,7 @@ export async function testDuplicateDetection() {
       description: 'Test duplicate detection - Equipment maintenance'
     };
 
-    const duplicatesIdentical = await validationService.findDuplicateTransactions(identicalTransaction);
+    const duplicatesIdentical = await ValidationService.findDuplicateTransactions(identicalTransaction);
     console.log(`✅ Found ${duplicatesIdentical.length} duplicates for identical transaction`);
     
     if (duplicatesIdentical.length > 0) {
@@ -178,7 +178,7 @@ export async function testDuplicateDetection() {
       description: 'Test duplicate detection - Equipment repair' // Similar but not identical
     };
 
-    const duplicatesSimilar = await validationService.findDuplicateTransactions(similarTransaction);
+    const duplicatesSimilar = await ValidationService.findDuplicateTransactions(similarTransaction);
     console.log(`✅ Found ${duplicatesSimilar.length} duplicates for similar transaction`);
 
     // Test 4: Check for duplicates with different amount (should not match)
@@ -191,13 +191,13 @@ export async function testDuplicateDetection() {
       description: 'Test duplicate detection - Equipment maintenance'
     };
 
-    const duplicatesDifferentAmount = await validationService.findDuplicateTransactions(differentAmountTransaction);
+    const duplicatesDifferentAmount = await ValidationService.findDuplicateTransactions(differentAmountTransaction);
     console.log(`✅ Found ${duplicatesDifferentAmount.length} duplicates for different amount (should be 0)`);
 
     // Test 5: Test boolean duplicate check
     console.log('\n5. Testing boolean duplicate check...');
-    const hasDuplicatesIdentical = await validationService.checkDuplicateTransaction(identicalTransaction);
-    const hasDuplicatesDifferent = await validationService.checkDuplicateTransaction(differentAmountTransaction);
+    const hasDuplicatesIdentical = await ValidationService.checkDuplicateTransaction(identicalTransaction);
+    const hasDuplicatesDifferent = await ValidationService.checkDuplicateTransaction(differentAmountTransaction);
     
     console.log(`✅ Boolean check - identical: ${hasDuplicatesIdentical}, different amount: ${hasDuplicatesDifferent}`);
 

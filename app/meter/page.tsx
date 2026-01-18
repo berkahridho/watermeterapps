@@ -36,7 +36,6 @@ export default function MeterReadingPage() {
     if (typeof window !== 'undefined') {
       (window as any).clearWaterMeterCache = () => {
         offlineStorage.clearAllCache();
-        console.log('🗑️ Water meter cache cleared! Refresh the page to see fresh data.');
         return 'Cache cleared successfully!';
       };
       
@@ -132,7 +131,6 @@ export default function MeterReadingPage() {
             phone: c.phone || ''
           }));
           setCustomers(customers);
-          console.log(`Loaded ${customers.length} customers from offline storage`);
         }
       }
 
@@ -170,7 +168,6 @@ export default function MeterReadingPage() {
           }));
           
           setCustomers(customers);
-          console.log(`Synced ${customers.length} customers from server`);
         }
       } catch (error) {
         console.error('Error syncing customers:', error);

@@ -176,14 +176,14 @@ export default function Home() {
           </form>
         </div>
         
-        <div className="bg-white dark:bg-gray-800 rounded-xl p-4 border border-gray-200 dark:border-gray-700">
+        {/* <div className="bg-white dark:bg-gray-800 rounded-xl p-4 border border-gray-200 dark:border-gray-700">
           <p className="text-xs text-gray-600 dark:text-gray-400 mb-2 text-center">Authentication Info:</p>
           <div className="text-xs mb-3 text-center">
             <p className="text-gray-700 dark:text-gray-300 font-medium">✅ Admin users: Use Supabase Auth credentials</p>
             <p className="text-gray-700 dark:text-gray-300 font-medium">✅ RT PIC users: Created through Admin → Users</p>
             <p className="text-green-600 dark:text-green-400 mt-2 font-medium">🔒 Secure authentication enabled</p>
           </div>
-        </div>
+        </div> */}
       </div>
     </div>
   );

@@ -415,6 +415,53 @@ export class ValidationService {
   static getValidationConstants() {
     return { ...this.CONSTANTS };
   }
+
+  /**
+   * Find duplicate transactions
+   */
+  static async findDuplicateTransactions(transaction: any): Promise<any[]> {
+    // This is a placeholder implementation
+    // In a real scenario, you would query the database for similar transactions
+    // For now, return empty array (no duplicates found)
+    return [];
+  }
+
+  /**
+   * Validate transaction
+   */
+  static validateTransaction(transaction: any): { isValid: boolean; errors?: any[] } {
+    // Basic transaction validation
+    if (!transaction.amount || transaction.amount <= 0) {
+      return {
+        isValid: false,
+        errors: [{ message: 'Amount must be greater than 0' }]
+      };
+    }
+
+    if (!transaction.type || !['income', 'expense'].includes(transaction.type)) {
+      return {
+        isValid: false,
+        errors: [{ message: 'Invalid transaction type' }]
+      };
+    }
+
+    if (!transaction.date) {
+      return {
+        isValid: false,
+        errors: [{ message: 'Date is required' }]
+      };
+    }
+
+    return { isValid: true };
+  }
+
+  /**
+   * Check if transaction is duplicate (boolean version)
+   */
+  static async checkDuplicateTransaction(transaction: any): Promise<boolean> {
+    const duplicates = await this.findDuplicateTransactions(transaction);
+    return duplicates.length > 0;
+  }
 }
 
 export default ValidationService;

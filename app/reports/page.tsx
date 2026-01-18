@@ -67,7 +67,6 @@ export default function BillingReports() {
     if (typeof window !== 'undefined') {
       (window as any).clearWaterMeterCache = () => {
         offlineStorage.clearAllCache();
-        console.log('🗑️ Water meter cache cleared! Refresh the page to see fresh data.');
         return 'Cache cleared successfully!';
       };
       
@@ -99,7 +98,6 @@ export default function BillingReports() {
   };
 
   const handleForceRefresh = () => {
-    console.log('🔄 Force refresh triggered');
     setForceRefresh(!forceRefresh);
     fetchBillingData(true); // Bypass cache
   };
@@ -139,7 +137,6 @@ export default function BillingReports() {
       
       // Always try to fetch fresh data from server first
       try {
-        console.log('📡 Fetching customers from server...');
         const { data: customersData, error: customersError } = await supabase
           .from('customers')
           .select('*');
@@ -165,7 +162,6 @@ export default function BillingReports() {
       }
 
       try {
-        console.log('📡 Fetching meter readings from server...');
         const { data: readingsData, error: readingsError } = await supabase
           .from('meter_readings')
           .select('*')
@@ -182,9 +178,7 @@ export default function BillingReports() {
 
       // If no readings from server, use offline storage
       if (readings.length === 0 && typeof window !== 'undefined') {
-        console.log('📦 No server readings, checking offline storage...');
         const offlineReadings = offlineStorage.getReadings();
-        console.log(`📦 Found ${offlineReadings.length} readings in offline storage`);
         if (offlineReadings.length > 0) {
           readings = offlineReadings;
         }
@@ -192,9 +186,7 @@ export default function BillingReports() {
 
       // If no customers from server, use offline storage
       if (customers.length === 0 && typeof window !== 'undefined') {
-        console.log('📦 No server customers, checking offline storage...');
         let offlineCustomers = offlineStorage.getCustomers();
-        console.log(`📦 Found ${offlineCustomers.length} customers in offline storage`);
         
         if (offlineCustomers.length > 0) {
           // Filter customers based on user role
@@ -221,8 +213,6 @@ export default function BillingReports() {
         const customerReadings = readings
           .filter(reading => reading.customer_id.toString() === customerId)
           .sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime()); // Sort ascending (oldest first)
-        
-        console.log(`👤 ${customer.name} (${customer.rt}): ${customerReadings.length} readings (ID: ${customerId})`);
         
         if (customerReadings.length >= 2) {
           // Get the last two readings (most recent and one before)
@@ -259,7 +249,6 @@ export default function BillingReports() {
             billDate: currentReading.date, // Use actual reading date, not current date
           });
         } else {
-          console.log(`  ⚠️ Cannot calculate bill: only ${customerReadings.length} reading(s) (need 2)`);
         }
       }
       

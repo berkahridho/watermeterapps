@@ -33,7 +33,6 @@ export default function Customers() {
   const fetchCustomers = async () => {
     setLoading(true);
     try {
-      console.log('Fetching customers from Supabase...');
       const { data, error } = await supabase
         .from('customers')
         .select('*')
@@ -44,8 +43,6 @@ export default function Customers() {
         alert(`Error fetching customers: ${error.message}`);
         return;
       }
-
-      console.log('Customers data received:', data);
 
       if (data) {
         // Transform the data to match Customer type
@@ -80,7 +77,6 @@ export default function Customers() {
   const handleAddCustomer = async (e: React.FormEvent) => {
     e.preventDefault();
     try {
-      console.log('Adding customer:', newCustomer);
       const { data, error } = await supabase
         .from('customers')
         .insert([
@@ -97,8 +93,6 @@ export default function Customers() {
         alert(`Error adding customer: ${error.message}`);
         return;
       }
-
-      console.log('Customer added:', data);
 
       // Add the new customer to the local state
       if (data && data.length > 0) {
@@ -128,7 +122,6 @@ export default function Customers() {
     e.preventDefault();
     if (editingCustomer) {
       try {
-        console.log('Updating customer:', editingCustomer.id, editForm);
         const { error } = await supabase
           .from('customers')
           .update({
@@ -163,7 +156,6 @@ export default function Customers() {
   const handleDeleteCustomer = async (id: string) => {
     if (confirm('Are you sure you want to delete this customer?')) {
       try {
-        console.log('Deleting customer:', id);
         const { error } = await supabase
           .from('customers')
           .delete()
@@ -178,7 +170,6 @@ export default function Customers() {
         // Remove the customer from the local state
         const updatedCustomers = customers.filter(customer => customer.id !== id);
         setCustomers(updatedCustomers);
-        console.log('Customer deleted successfully');
       } catch (error: any) {
         console.error('Error deleting customer:', error);
         alert(`Error: ${error.message}`);

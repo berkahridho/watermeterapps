@@ -126,7 +126,7 @@ export default function TransactionForm({
           description: formData.description.trim()
         };
 
-        const duplicates = await validationService.findDuplicateTransactions(transactionInput);
+        const duplicates = await ValidationService.findDuplicateTransactions(transactionInput);
         if (duplicates.length > 0) {
           setDuplicateTransactions(duplicates);
           setPendingTransaction(transactionInput);

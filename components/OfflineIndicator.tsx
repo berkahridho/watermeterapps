@@ -76,9 +76,7 @@ export default function OfflineIndicator() {
     if (syncStatus.syncInProgress) return;
     
     try {
-      console.log('Starting manual sync...');
       const result = await syncManager.sync();
-      console.log('Manual sync result:', result);
       
       if (result.errors.length > 0) {
         console.error('Sync errors:', result.errors);

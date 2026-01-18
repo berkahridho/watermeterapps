@@ -157,8 +157,6 @@ export default function MeterReadingHistory() {
         }
       }
 
-      console.log(`Fetched ${customersData.length} customers and ${readingsData.length} readings`);
-      
       setCustomers(customersData);
       setReadings(readingsData);
       

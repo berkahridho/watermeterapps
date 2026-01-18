@@ -193,7 +193,6 @@ const FinancialDashboard: React.FC<FinancialDashboardProps> = ({
   };
 
   const handleExport = async (format: 'pdf' | 'csv') => {
-    console.log(`Exporting financial report as ${format.toUpperCase()}`);
     // Export logic is handled by ReportGenerator component
   };
 

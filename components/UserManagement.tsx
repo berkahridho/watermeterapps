@@ -35,7 +35,7 @@ export default function UserManagement() {
     email: '',
     full_name: '',
     phone: '',
-    role: 'rt_pic' as const,
+    role: 'rt_pic' as 'admin' | 'rt_pic' | 'collector',
     assigned_rt: '',
     password: ''
   });
