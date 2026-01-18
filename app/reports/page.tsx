@@ -60,7 +60,20 @@ export default function BillingReports() {
     if (!userData) {
       router.push('/login');
     } else {
-      setUser(JSON.parse(userData));
+      const parsedUser = JSON.parse(userData);
+      setUser(parsedUser);
+      
+      // Check if user has access to reports - only admin can access (not RT PIC or viewer)
+      const hasReportsAccess = parsedUser?.email === 'admin@example.com' || 
+                              parsedUser?.role === 'admin' || 
+                              (parsedUser?.email && parsedUser.email.includes('admin')) || 
+                              parsedUser?.isDemo === true;
+      
+      if (!hasReportsAccess) {
+        // Redirect unauthorized users to dashboard
+        router.push('/dashboard');
+        return;
+      }
     }
 
     // Add global clear cache function for debugging

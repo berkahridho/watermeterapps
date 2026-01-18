@@ -25,7 +25,21 @@ export default function Customers() {
     if (!userData) {
       router.push('/login');
     } else {
-      setUser(JSON.parse(userData));
+      const parsedUser = JSON.parse(userData);
+      setUser(parsedUser);
+      
+      // Check if user has admin access - only admin can manage customers
+      const isAdmin = parsedUser?.email === 'admin@example.com' || 
+                      parsedUser?.role === 'admin' || 
+                      (parsedUser?.email && parsedUser.email.includes('admin')) || 
+                      parsedUser?.isDemo === true;
+      
+      if (!isAdmin) {
+        // Redirect non-admin users to dashboard
+        router.push('/dashboard');
+        return;
+      }
+      
       fetchCustomers();
     }
   }, [router]);

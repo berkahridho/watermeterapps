@@ -89,7 +89,7 @@ const NAVIGATION_CONFIG = {
     ]
   },
   
-  // RT PIC restricted navigation (Dashboard removed - handled by logo)
+  // RT PIC restricted navigation - only meter reading and meter history
   rtPic: [
     { 
       name: 'Baca Meter', 
@@ -102,6 +102,22 @@ const NAVIGATION_CONFIG = {
       href: '/meter-history', 
       icon: FiClock,
       key: 'meter-history'
+    }
+  ],
+
+  // Viewer navigation (read-only access) - only dashboard and financial reports
+  viewer: [
+    { 
+      name: 'Dashboard', 
+      href: '/dashboard', 
+      icon: FiBarChart2,
+      key: 'dashboard'
+    },
+    { 
+      name: 'Laporan Keuangan', 
+      href: '/financial', 
+      icon: FiDollarSign,
+      key: 'financial'
     }
   ]
 };
@@ -124,6 +140,9 @@ export default function Navigation({ user, currentPage }: NavigationProps) {
   const getNavigationItems = () => {
     if (isRTPIC) {
       return NAVIGATION_CONFIG.rtPic;
+    }
+    if (user?.role === 'viewer') {
+      return NAVIGATION_CONFIG.viewer;
     }
     return NAVIGATION_CONFIG.core;
   };

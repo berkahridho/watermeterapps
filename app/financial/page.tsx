@@ -20,11 +20,12 @@ export default function FinancialPage() {
       const parsedUser = JSON.parse(userData);
       setUser(parsedUser);
       
-      // Check if user has admin privileges
-      // For demo purposes, we'll consider the demo admin user as authorized
-      // In a real application, this would check against user roles from the database
-      const isAdmin = parsedUser.email === 'admin@example.com' || parsedUser.role === 'admin';
-      setIsAuthorized(isAdmin);
+      // Allow viewer and admin access to financial reports
+      // Block only non-admin, non-viewer users from financial management
+      const isAuthorizedForFinancial = parsedUser?.email === 'admin@example.com' || 
+                                      parsedUser?.role === 'admin' || 
+                                      parsedUser?.role === 'viewer';
+      setIsAuthorized(isAuthorizedForFinancial);
     }
     setLoading(false);
   }, []);
@@ -97,7 +98,7 @@ export default function FinancialPage() {
         <Navigation user={user} currentPage="financial" />
         <main>
           <FinancialDashboard 
-            userRole={user?.role || 'admin'} 
+            userRole={user?.role === 'viewer' ? 'viewer' : 'admin'} 
             initialTransactions={[]}
           />
         </main>

@@ -30,7 +30,15 @@ export default function MeterReadingPage() {
       return;
     }
     
-    setUser(JSON.parse(userData));
+    const user = JSON.parse(userData);
+    
+    // Block viewer access to meter reading
+    if (user.role === 'viewer') {
+      router.push('/dashboard');
+      return;
+    }
+    
+    setUser(user);
     setMounted(true);
     setIsOnline(navigator.onLine);
 
