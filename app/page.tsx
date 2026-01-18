@@ -82,8 +82,11 @@ export default function Home() {
         if (userSession.role === 'rt_pic') {
           // RT PIC users go directly to meter reading page
           router.push('/meter');
+        } else if (userSession.role === 'viewer') {
+          // Viewer users go to dashboard (read-only access)
+          router.push('/dashboard');
         } else {
-          // Admin and other users go to dashboard
+          // Admin, collector and other users go to dashboard
           router.push('/dashboard');
         }
       }

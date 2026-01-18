@@ -82,7 +82,21 @@ export default function MeterReadingHistory() {
     if (!userData) {
       router.push('/login');
     } else {
-      setUser(JSON.parse(userData));
+      const parsedUser = JSON.parse(userData);
+      setUser(parsedUser);
+      
+      // Check if user has access to meter history - admin and RT PIC only (not viewer)
+      const hasMeterHistoryAccess = parsedUser?.email === 'admin@example.com' || 
+                                   parsedUser?.role === 'admin' || 
+                                   parsedUser?.role === 'rt_pic' ||
+                                   (parsedUser?.email && parsedUser.email.includes('admin')) || 
+                                   parsedUser?.isDemo === true;
+      
+      if (!hasMeterHistoryAccess) {
+        // Redirect unauthorized users (including RT PIC) to dashboard
+        router.push('/dashboard');
+        return;
+      }
     }
   }, [router]);
 

@@ -25,28 +25,17 @@ if (!process.env.SUPABASE_SERVICE_ROLE_KEY) {
 
 export async function POST(request: NextRequest) {
   try {
-    console.log('🔄 API: Starting user creation process...');
-    
-    // Check if user is admin (basic check - you might want to improve this)
+    // Check if user is admin (basic check)
     const authHeader = request.headers.get('authorization');
     if (!authHeader) {
-      console.log('❌ API: No authorization header');
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
     const body = await request.json();
-    console.log('📝 API: Request body received:', { 
-      email: body.email, 
-      username: body.username,
-      role: body.role, 
-      assigned_rt: body.assigned_rt 
-    });
-    
     const { email, username, password, full_name, role, assigned_rt, phone } = body;
 
     // Validate required fields
     if (!email || !username || !password || !full_name || !role) {
-      console.log('❌ API: Missing required fields');
       return NextResponse.json(
         { error: 'Missing required fields: email, username, password, full_name, role' },
         { status: 400 }
@@ -55,7 +44,6 @@ export async function POST(request: NextRequest) {
 
     // Validate username format
     if (username.length < 3 || username.length > 50) {
-      console.log('❌ API: Username length invalid');
       return NextResponse.json(
         { error: 'Username must be between 3 and 50 characters' },
         { status: 400 }
@@ -64,24 +52,43 @@ export async function POST(request: NextRequest) {
 
     // Validate username contains only alphanumeric and underscore
     if (!/^[a-zA-Z0-9_]+$/.test(username)) {
-      console.log('❌ API: Username contains invalid characters');
       return NextResponse.json(
         { error: 'Username can only contain letters, numbers, and underscores' },
         { status: 400 }
       );
     }
 
+    // Check if username already exists
+    const { data: existingUser } = await supabaseAdmin
+      .from('user_profiles')
+      .select('username')
+      .eq('username', username)
+      .single();
+
+    if (existingUser) {
+      return NextResponse.json(
+        { error: 'Username already exists. Please choose a different username.' },
+        { status: 400 }
+      );
+    }
+
     // Validate password length
     if (password.length < 6) {
-      console.log('❌ API: Password too short');
       return NextResponse.json(
         { error: 'Password must be at least 6 characters long' },
         { status: 400 }
       );
     }
 
-    console.log('🔑 API: Creating auth user...');
-    
+    // Validate role
+    const validRoles = ['admin', 'rt_pic', 'viewer'];
+    if (!validRoles.includes(role)) {
+      return NextResponse.json(
+        { error: `Invalid role. Must be one of: ${validRoles.join(', ')}` },
+        { status: 400 }
+      );
+    }
+
     // Create auth user
     const { data: authData, error: authError } = await supabaseAdmin.auth.admin.createUser({
       email,
@@ -95,28 +102,19 @@ export async function POST(request: NextRequest) {
     });
 
     if (authError) {
-      console.error('❌ API: Auth error details:', {
-        message: authError.message,
-        status: authError.status,
-        code: authError.code,
-        details: authError
-      });
+      const errorMessage = authError.message || 'Unknown authentication error';
       return NextResponse.json(
-        { error: `Database error creating new user: ${authError.message}` },
+        { error: `Authentication failed: ${errorMessage}` },
         { status: 400 }
       );
     }
 
     if (!authData.user) {
-      console.log('❌ API: No user data returned');
       return NextResponse.json(
         { error: 'Failed to create user - no user data returned' },
         { status: 400 }
       );
     }
-
-    console.log('✅ API: Auth user created successfully:', authData.user.id);
-    console.log('👤 API: Creating user profile...');
 
     // Create/update user profile
     const { error: profileError } = await supabaseAdmin
@@ -133,7 +131,6 @@ export async function POST(request: NextRequest) {
       });
 
     if (profileError) {
-      console.error('⚠️ API: Profile error:', profileError);
       // User was created but profile failed - this is still a partial success
       return NextResponse.json({
         success: true,
@@ -142,7 +139,6 @@ export async function POST(request: NextRequest) {
       });
     }
 
-    console.log('✅ API: User and profile created successfully');
     return NextResponse.json({
       success: true,
       user: authData.user,
@@ -150,7 +146,6 @@ export async function POST(request: NextRequest) {
     });
 
   } catch (error: any) {
-    console.error('💥 API: Unexpected error:', error);
     return NextResponse.json(
       { error: `Server error: ${error.message}` },
       { status: 500 }

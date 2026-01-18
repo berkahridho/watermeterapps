@@ -10,20 +10,11 @@ interface UserProfile {
   username?: string;
   full_name: string;
   phone?: string;
-  role: 'admin' | 'rt_pic';
+  role: 'admin' | 'rt_pic' | 'viewer';
   assigned_rt?: string;
   is_active: boolean;
   created_at: string;
   updated_at: string;
-}
-
-interface RTAssignment {
-  id: string;
-  user_id: string;
-  rt: string;
-  role: 'pic' ;
-  assigned_date: string;
-  is_active: boolean;
 }
 
 export default function UserManagement() {
@@ -37,7 +28,7 @@ export default function UserManagement() {
     username: '',
     full_name: '',
     phone: '',
-    role: 'rt_pic' as 'admin' | 'rt_pic' ,
+    role: 'rt_pic' as 'admin' | 'rt_pic' | 'viewer',
     assigned_rt: '',
     password: ''
   });
@@ -119,7 +110,7 @@ export default function UserManagement() {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
-            'Authorization': `Bearer ${localStorage.getItem('user')}` // Basic auth check
+            'Authorization': `Bearer ${localStorage.getItem('user')}`
           },
           body: JSON.stringify({
             email: formData.email,
@@ -202,6 +193,8 @@ export default function UserManagement() {
         return 'bg-purple-100 text-purple-800 dark:bg-purple-900 dark:text-purple-200';
       case 'rt_pic':
         return 'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200';
+      case 'viewer':
+        return 'bg-orange-100 text-orange-800 dark:bg-orange-900 dark:text-orange-200';
       default:
         return 'bg-gray-100 text-gray-800 dark:bg-gray-900 dark:text-gray-200';
     }
@@ -213,6 +206,8 @@ export default function UserManagement() {
         return 'Administrator';
       case 'rt_pic':
         return 'RT PIC';
+      case 'viewer':
+        return 'Viewer';
       default:
         return role;
     }
@@ -232,7 +227,7 @@ export default function UserManagement() {
       <div className="flex justify-between items-center">
         <div>
           <h2 className="text-2xl font-bold text-gray-900 dark:text-white">User Management</h2>
-          <p className="text-gray-600 dark:text-gray-400">Manage RT PICs</p>
+          <p className="text-gray-600 dark:text-gray-400">Manage users and their access levels</p>
         </div>
         <button
           onClick={() => {
@@ -283,9 +278,13 @@ export default function UserManagement() {
               </label>
               <input
                 type="text"
-                value={formData.username}
+                value={formData.username || ''}
                 onChange={(e) => setFormData({ ...formData, username: e.target.value })}
                 disabled={!!editingUser}
+                autoComplete="new-password"
+                autoCorrect="off"
+                autoCapitalize="off"
+                spellCheck="false"
                 className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent dark:bg-gray-700 dark:text-white disabled:bg-gray-100 dark:disabled:bg-gray-600"
                 placeholder="cth. petugasRTxx"
                 required
@@ -311,7 +310,7 @@ export default function UserManagement() {
               </label>
               <input
                 type="tel"
-                value={formData.phone}
+                value={formData.phone || ''}
                 onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
                 className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent dark:bg-gray-700 dark:text-white"
                 placeholder="e.g., +62812345678"
@@ -328,6 +327,7 @@ export default function UserManagement() {
                 className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent dark:bg-gray-700 dark:text-white"
               >
                 <option value="rt_pic">RT PIC</option>
+                <option value="viewer">Viewer (Read Only)</option>
                 <option value="admin">Administrator</option>
               </select>
             </div>
@@ -337,11 +337,11 @@ export default function UserManagement() {
                 Assigned RT
               </label>
               <select
-                value={formData.assigned_rt}
+                value={formData.assigned_rt || ''}
                 onChange={(e) => setFormData({ ...formData, assigned_rt: e.target.value })}
                 className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent dark:bg-gray-700 dark:text-white"
               >
-                <option value="">Select RT</option>
+                <option value="">Select RT (Optional for Viewer)</option>
                 {availableRTs.map(rt => (
                   <option key={rt} value={rt}>{rt}</option>
                 ))}
@@ -355,7 +355,7 @@ export default function UserManagement() {
                 </label>
                 <input
                   type="password"
-                  value={formData.password}
+                  value={formData.password || ''}
                   onChange={(e) => setFormData({ ...formData, password: e.target.value })}
                   className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent dark:bg-gray-700 dark:text-white"
                   required={!editingUser}

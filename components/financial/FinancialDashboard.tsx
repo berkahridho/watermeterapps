@@ -14,7 +14,7 @@ import DuplicateWarningDialog from './DuplicateWarningDialog';
 
 interface FinancialDashboardProps {
   initialTransactions?: Transaction[];
-  userRole: 'admin' | 'user';
+  userRole: 'admin' | 'user' | 'viewer';
 }
 
 const FinancialDashboard: React.FC<FinancialDashboardProps> = ({
@@ -330,28 +330,31 @@ const FinancialDashboard: React.FC<FinancialDashboardProps> = ({
                     categories={[]} // Categories will be loaded by FilterPanel
                   />
                 </div>
-                <div className="flex-shrink-0">
-                  <button
-                    onClick={() => setShowTransactionForm(true)}
-                    className="w-full sm:w-auto bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg font-medium transition-colors flex items-center justify-center gap-2"
-                  >
-                    <FiPlus className="h-4 w-4" />
-                    <span className="sm:hidden">Tambah Transaksi</span>
-                    <span className="hidden sm:inline">Tambah Transaksi Baru</span>
-                  </button>
-                </div>
+                {/* Only show Add Transaction button for admin users */}
+                {userRole === 'admin' && (
+                  <div className="flex-shrink-0">
+                    <button
+                      onClick={() => setShowTransactionForm(true)}
+                      className="w-full sm:w-auto bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg font-medium transition-colors flex items-center justify-center gap-2"
+                    >
+                      <FiPlus className="h-4 w-4" />
+                      <span className="sm:hidden">Tambah Transaksi</span>
+                      <span className="hidden sm:inline">Tambah Transaksi Baru</span>
+                    </button>
+                  </div>
+                )}
               </div>
 
               {/* Transaction List */}
               <TransactionList
                 transactions={filteredTransactions}
-                onEdit={setEditingTransaction}
-                onDelete={async (id: string) => {
+                onEdit={userRole === 'admin' ? setEditingTransaction : undefined}
+                onDelete={userRole === 'admin' ? async (id: string) => {
                   const transaction = filteredTransactions.find(t => t.id === id);
                   if (transaction) {
                     setDeletingTransaction(transaction);
                   }
-                }}
+                } : undefined}
                 loading={loading}
               />
             </div>
