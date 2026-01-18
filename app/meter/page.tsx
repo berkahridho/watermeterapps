@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { FiRefreshCw, FiCheckCircle, FiAlertCircle, FiWifi, FiWifiOff, FiClock, FiTrash2 } from 'react-icons/fi';
-import { Customer } from '@/types/types';
+import { Customer, User } from '@/types/types';
 import { supabase } from '@/lib/supabase';
 import { offlineStorage } from '@/lib/offlineStorage';
 import Navigation from '@/components/Navigation';
@@ -11,7 +11,7 @@ import ProtectedRoute from '@/components/ProtectedRoute';
 import MeterReadingForm from '@/components/MeterReadingForm';
 
 export default function MeterReadingPage() {
-  const [user, setUser] = useState<any>(null);
+  const [user, setUser] = useState<User | null>(null);
   const [customers, setCustomers] = useState<Customer[]>([]);
   const [availableCustomers, setAvailableCustomers] = useState<Customer[]>([]);
   const [submittedCustomerIds, setSubmittedCustomerIds] = useState<Set<string>>(new Set());
@@ -33,25 +33,6 @@ export default function MeterReadingPage() {
     setUser(JSON.parse(userData));
     setMounted(true);
     setIsOnline(navigator.onLine);
-
-    // Add global clear cache function for debugging
-    if (typeof window !== 'undefined') {
-      (window as any).clearWaterMeterCache = () => {
-        offlineStorage.clearAllCache();
-        return 'Cache cleared successfully!';
-      };
-      
-      (window as any).showCacheInfo = () => {
-        const customers = offlineStorage.getCustomers();
-        const readings = offlineStorage.getReadings();
-        const discounts = offlineStorage.getDiscounts();
-        return {
-          customers: customers.length,
-          readings: readings.length,
-          discounts: discounts.length
-        };
-      };
-    }
 
     // Listen for online/offline events
     const handleOnline = () => setIsOnline(true);
@@ -284,7 +265,7 @@ export default function MeterReadingPage() {
   return (
     <ProtectedRoute>
       <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100 dark:from-gray-900 dark:to-gray-800">
-        <Navigation user={user} currentPage="meter" />
+        {user && <Navigation user={user} currentPage="meter" />}
         
         <div className="container mx-auto px-4 py-8 max-w-4xl">
           {/* Header Section */}

@@ -80,3 +80,14 @@ export interface RTTotalBill {
 
 // Re-export financial types for convenience
 export * from './financial';
+
+// User and authentication interfaces
+export interface User {
+  id: string;
+  email: string;
+  role: 'admin' | 'rt_pic' | 'collector';
+  full_name?: string;
+  assigned_rt?: string;
+  phone?: string;
+  isDemo?: boolean;
+}

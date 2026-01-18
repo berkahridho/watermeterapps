@@ -14,15 +14,16 @@ import { useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { 
-  FiUser, FiDroplet, FiBarChart2, FiLogOut, FiMenu, FiX, FiHome, 
+  FiUser, FiDroplet, FiBarChart2, FiLogOut, FiMenu, FiX, 
   FiChevronDown, FiChevronUp, FiDollarSign, FiSettings, FiUsers, 
-  FiUpload, FiClock, FiShield, FiChevronRight 
+  FiUpload, FiClock, FiShield 
 } from 'react-icons/fi';
+import { User } from '@/types/types';
 import ThemeToggle from './ThemeToggle';
 import OptimizedOfflineIndicator from './OptimizedOfflineIndicator';
 
 interface NavigationProps {
-  user: any;
+  user: User;
   currentPage: string;
 }
 
