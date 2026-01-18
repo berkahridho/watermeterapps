@@ -31,22 +31,12 @@ export default function Home() {
         const { data: userProfile, error: profileError } = await supabase
           .from('user_profiles')
           .select('email')
-          .ilike('full_name', `%${credential}%`)
+          .eq('username', credential)
           .limit(1)
           .single();
 
         if (profileError || !userProfile) {
-          // Try to find by email pattern (username might be part of email)
-          const { data: authUsers } = await supabase.auth.admin.listUsers();
-          const foundUser = authUsers?.users?.find(u => 
-            u.email?.toLowerCase().includes(credential.toLowerCase())
-          );
-          
-          if (foundUser?.email) {
-            loginEmail = foundUser.email;
-          } else {
-            throw new Error('Username or email not found');
-          }
+          throw new Error('Username or email not found');
         } else {
           loginEmail = userProfile.email;
         }
