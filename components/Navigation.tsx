@@ -31,25 +31,25 @@ const NAVIGATION_CONFIG = {
   // Core navigation items available to all users (Dashboard removed - handled by logo)
   core: [
     { 
-      name: 'Meter Reading', 
+      name: 'Baca Meter', 
       href: '/meter', 
       icon: FiDroplet,
       key: 'meter'
     },
     { 
-      name: 'Meter History', 
+      name: 'Riwayat Meter', 
       href: '/meter-history', 
       icon: FiClock,
       key: 'meter-history'
     },
     { 
-      name: 'Reports', 
+      name: 'Struk', 
       href: '/reports', 
       icon: FiBarChart2,
       key: 'reports'
     },
     { 
-      name: 'Financial', 
+      name: 'Laporan', 
       href: '/financial', 
       icon: FiDollarSign,
       key: 'financial'
@@ -91,13 +91,13 @@ const NAVIGATION_CONFIG = {
   // RT PIC restricted navigation (Dashboard removed - handled by logo)
   rtPic: [
     { 
-      name: 'Meter Reading', 
+      name: 'Baca Meter', 
       href: '/meter', 
       icon: FiDroplet,
       key: 'meter'
     },
     { 
-      name: 'Meter History', 
+      name: 'Riwayat Meter', 
       href: '/meter-history', 
       icon: FiClock,
       key: 'meter-history'
@@ -168,7 +168,7 @@ export default function Navigation({ user, currentPage }: NavigationProps) {
                   PAMDes Berkah Ridho
                 </div>
                 <div className="text-xs text-gray-500 dark:text-gray-400 font-medium">
-                  Water Meter Management
+                  Pengelolaan PAM Kalipucang
                 </div>
               </div>
               <div className="ml-3 sm:hidden">
