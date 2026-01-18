@@ -2,32 +2,63 @@
 
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { FiUser, FiLock, FiLogIn, FiAlertCircle } from 'react-icons/fi';
-import Link from 'next/link';
+import { FiUser, FiLock, FiLogIn, FiAlertCircle, FiEye, FiEyeOff } from 'react-icons/fi';
 import ThemeToggle from '@/components/ThemeToggle';
 
 export default function Home() {
-  const [email, setEmail] = useState('');
+  const [credential, setCredential] = useState('');
   const [password, setPassword] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState('');
+  const [isLoading, setIsLoading] = useState(false);
   const router = useRouter();
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
+    setIsLoading(true);
     
     try {
       // Import supabase here to avoid SSR issues
       const { supabase } = await import('@/lib/supabase');
       
-      // Try real Supabase authentication first
+      // Determine if credential is email or username
+      const isEmail = credential.includes('@');
+      let loginEmail = credential;
+
+      // If username provided, try to find the user's email
+      if (!isEmail) {
+        const { data: userProfile, error: profileError } = await supabase
+          .from('user_profiles')
+          .select('email')
+          .ilike('full_name', `%${credential}%`)
+          .limit(1)
+          .single();
+
+        if (profileError || !userProfile) {
+          // Try to find by email pattern (username might be part of email)
+          const { data: authUsers } = await supabase.auth.admin.listUsers();
+          const foundUser = authUsers?.users?.find(u => 
+            u.email?.toLowerCase().includes(credential.toLowerCase())
+          );
+          
+          if (foundUser?.email) {
+            loginEmail = foundUser.email;
+          } else {
+            throw new Error('Username or email not found');
+          }
+        } else {
+          loginEmail = userProfile.email;
+        }
+      }
+
+      // Try real Supabase authentication
       const { data, error } = await supabase.auth.signInWithPassword({
-        email,
+        email: loginEmail,
         password,
       });
 
       if (error) {
-        // Production: Only use real Supabase authentication
         console.error('❌ Login failed:', error.message);
         throw error;
       }
@@ -68,7 +99,9 @@ export default function Home() {
       }
     } catch (error: any) {
       console.error('❌ Login error:', error);
-      setError(error.message || 'Invalid email or password');
+      setError(error.message || 'Invalid username/email or password');
+    } finally {
+      setIsLoading(false);
     }
   };
 
@@ -91,7 +124,7 @@ export default function Home() {
             Sign in to your account
           </h2>
           <p className="mt-2 text-gray-600 dark:text-gray-400">
-            Enter your credentials to access your dashboard
+            Enter your username or email to access your dashboard
           </p>
         </div>
         
@@ -105,21 +138,22 @@ export default function Home() {
 
           <form className="space-y-6" onSubmit={handleSubmit}>
             <div>
-              <label htmlFor="email" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                Email address
+              <label htmlFor="credential" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                Username or Email
               </label>
               <div className="relative">
                 <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
                   <FiUser className="text-gray-400 dark:text-gray-500" />
                 </div>
                 <input
-                  id="email"
-                  type="email"
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
+                  id="credential"
+                  type="text"
+                  value={credential}
+                  onChange={(e) => setCredential(e.target.value)}
                   className="w-full px-4 py-3 border border-gray-200 dark:border-gray-700 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all bg-white dark:bg-gray-700 dark:text-white pl-10"
-                  placeholder="you@example.com"
+                  placeholder="username or email@example.com"
                   required
+                  disabled={isLoading}
                 />
               </div>
             </div>
@@ -134,13 +168,26 @@ export default function Home() {
                 </div>
                 <input
                   id="password"
-                  type="password"
+                  type={showPassword ? 'text' : 'password'}
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
-                  className="w-full px-4 py-3 border border-gray-200 dark:border-gray-700 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all bg-white dark:bg-gray-700 dark:text-white pl-10"
+                  className="w-full px-4 py-3 border border-gray-200 dark:border-gray-700 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all bg-white dark:bg-gray-700 dark:text-white pl-10 pr-10"
                   placeholder="••••••••"
                   required
+                  disabled={isLoading}
                 />
+                <button
+                  type="button"
+                  onClick={() => setShowPassword(!showPassword)}
+                  className="absolute inset-y-0 right-0 pr-3 flex items-center text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-400 transition-colors"
+                  disabled={isLoading}
+                >
+                  {showPassword ? (
+                    <FiEyeOff className="h-5 w-5" />
+                  ) : (
+                    <FiEye className="h-5 w-5" />
+                  )}
+                </button>
               </div>
             </div>
 
@@ -151,6 +198,7 @@ export default function Home() {
                   name="remember-me"
                   type="checkbox"
                   className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 dark:border-gray-600 rounded"
+                  disabled={isLoading}
                 />
                 <label htmlFor="remember-me" className="ml-2 block text-sm text-gray-700 dark:text-gray-300">
                   Remember me
@@ -167,23 +215,15 @@ export default function Home() {
             <div>
               <button
                 type="submit"
-                className="bg-gradient-to-r from-blue-500 to-cyan-500 text-white px-5 py-2.5 rounded-xl font-medium hover:from-blue-600 hover:to-cyan-600 transition-all duration-300 w-full relative overflow-hidden"
+                disabled={isLoading}
+                className="bg-gradient-to-r from-blue-500 to-cyan-500 text-white px-5 py-2.5 rounded-xl font-medium hover:from-blue-600 hover:to-cyan-600 transition-all duration-300 w-full relative overflow-hidden disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center"
               >
                 <FiLogIn className="mr-2" />
-                Sign in
+                {isLoading ? 'Signing in...' : 'Sign in'}
               </button>
             </div>
           </form>
         </div>
-        
-        {/* <div className="bg-white dark:bg-gray-800 rounded-xl p-4 border border-gray-200 dark:border-gray-700">
-          <p className="text-xs text-gray-600 dark:text-gray-400 mb-2 text-center">Authentication Info:</p>
-          <div className="text-xs mb-3 text-center">
-            <p className="text-gray-700 dark:text-gray-300 font-medium">✅ Admin users: Use Supabase Auth credentials</p>
-            <p className="text-gray-700 dark:text-gray-300 font-medium">✅ RT PIC users: Created through Admin → Users</p>
-            <p className="text-green-600 dark:text-green-400 mt-2 font-medium">🔒 Secure authentication enabled</p>
-          </div>
-        </div> */}
       </div>
     </div>
   );
